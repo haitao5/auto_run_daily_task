@@ -20,6 +20,11 @@ def init_config():
     os.chdir(r".\adb")
     pass
 
+def cleanup():
+    """ 
+    """
+    # 删除截屏文件
+    pass
 
 class Terminal():
     def __init__(self):
@@ -28,12 +33,21 @@ class Terminal():
         self.screen_width = 0
         pass
 
+    def __run_adb_cmd__(self, cmd):
+        """ 执行ADB命令
+        """
+        if not isinstance(cmd, str):
+            raise TypeError
+
+        res = os.popen(cmd).read() 
+        logging.debug('RUN: %s \n%s' %(cmd, res))
+        return res
+
     def connect_to_terminal(self):
         """ 查找设备，检查环境配置
         """
         # 
-        devices = os.popen('adb devices').read() 
-        logging.debug('RUN: adb devices\n'+ devices) 
+        devices = self.__run_adb_cmd__('adb devices')
 
         port_num = '\n'.join(re.findall(r'^(\S+)\s+device', devices, re.M))
         logging.info('设备ID: ' + port_num)
@@ -48,11 +62,8 @@ class Terminal():
     def get_screen_size(self):   
         """ 获取屏幕尺寸
         """
-        sizes = os.popen('adb shell wm size').read()
-        logging.debug('RUN: adb shell wm size\n'+ sizes) 
-
+        sizes = self.__run_adb_cmd__('adb shell wm size')
         m = re.search(r'(\d+)x(\d+)', sizes)
-
 
         size = "{height}x{width}".format(height=m.group(2), width=m.group(1))
         logging.debug('屏幕尺寸: ' + size)
@@ -64,11 +75,8 @@ class Terminal():
     def check_app(self, app):
         """ 查询APP
         """ 
-        packages = os.popen('adb shell pm list packages').read()
-        logging.debug('RUN: adb shell pm list packages\n'+ packages) 
-
+        packages = self.__run_adb_cmd__('adb shell pm list packages')
         package = re.search(r"package:\S*%s"%app, packages)
-
         if not package:
             logging.critical('未查到目标APP！')
             sys.exit()
@@ -81,20 +89,15 @@ class Terminal():
     def capture_screen(self):
         """ 获取手机截屏，并保存到当前目录的screen.png
         """
-        packages = os.popen('adb shell screencap -p /sdcard/screen.png').read()
-        logging.debug('RUN: adb shell screencap -p /sdcard/screen.png\n' + packages) 
-
-        packages = os.popen('adb pull /sdcard/screen.png .').read()
-        logging.debug('RUN: adb pull /sdcard/screen.png .\n' + packages) 
+        self.__run_adb_cmd__('adb shell screencap -p /sdcard/screen.png')
+        self.__run_adb_cmd__('adb pull /sdcard/screen.png .')
         pass
 
     def swipe_screen(self, src, dest, timeout=10):
+        """ 滑屏
         """
-        """
-        cmd = "adb shell input swipe %d %d %d %d %d "  % (int(src[0]), int(src[1]), int(dest[0]), int(dest[1]), timeout)
-        packages = os.popen(cmd).read()
-        logging.debug('RUN: %s \n'%cmd + packages)        
-        
+        cmd = "adb shell input swipe %d %d %d %d %d "  % (int(src[0]), int(src[1]), int(dest[0]), int(dest[1]), timeout)   
+        return self.__run_adb_cmd__(cmd)  
 
     def compare_image(self, src_img, obj_img):
         """" 查找并返回 obj_img 图像在 src_img 图像的位置
@@ -111,23 +114,51 @@ class Terminal():
             return None
 
 
-    def find_obj(self, obj_img, timeout=5000):
+    def find_obj(self, obj_img, timeout=5):
         """  查找目标图标
         """
+        start_time = time.time()
+        current_time = start_time
+
+        while current_time - start_time < timeout:
+            pass
+
         pass
 
 
-if __name__ == '__main__':
-    init_config()
-
+def weibo_test():
     t = Terminal()
     t.connect_to_terminal()
     t.get_screen_size()
 
-    app = t.check_app('weibo')
-    t.capture_screen()
 
+
+    app = t.check_app('weibo')
+
+    t.capture_screen()
     pos = t.compare_image('screen.png', '1.png')
     t.swipe_screen(pos, pos)
+    time.sleep(10)
 
+    t.capture_screen()
+    pos = t.compare_image('screen.png', '2.png')
+    t.swipe_screen(pos, pos)
+    time.sleep(1)
+
+    t.capture_screen()
+    pos = t.compare_image('screen.png', '3.png')
+    t.swipe_screen(pos, pos)
+    time.sleep(10)
+
+    for i in range(6):
+        t.capture_screen()
+        pos = t.compare_image('screen.png', '4-l.png')
+        t.swipe_screen(pos, pos)   
+        time.sleep(2) 
+
+        
+if __name__ == '__main__':
+    init_config()
+
+    weibo_test()
 
