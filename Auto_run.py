@@ -7,6 +7,8 @@ import sys
 import re
 import time
 import logging
+import aircv
+
 
 def init_config():
     """ 初始配置
@@ -86,15 +88,33 @@ class Terminal():
         logging.debug('RUN: adb pull /sdcard/screen.png .\n' + packages) 
         pass
 
-    def compare_picture(self, image, template):
-        """" 查找并返回template图像在image图像的位置
+    def swipe_screen(self, src, dest, timeout=10):
         """
+        """
+        cmd = "adb shell input swipe %d %d %d %d %d "  % (int(src[0]), int(src[1]), int(dest[0]), int(dest[1]), timeout)
+        packages = os.popen(cmd).read()
+        logging.debug('RUN: %s \n'%cmd + packages)        
+        
 
+    def compare_image(self, src_img, obj_img):
+        """" 查找并返回 obj_img 图像在 src_img 图像的位置
+        """
+        im_src = aircv.imread(src_img)  
+        im_obj = aircv.imread(obj_img)
+
+        pos = aircv.find_template(im_src, im_obj)
+        logging.debug('Compare_Image: \nSource Image: %s \nObject Image:%s \nResults: %s\n' %(src_img, obj_img, pos)) 
+        
+        if pos:
+            return pos['result']
+        else:
+            return None
+
+
+    def find_obj(self, obj_img, timeout=5000):
+        """  查找目标图标
+        """
         pass
-
-
-              
-
 
 
 if __name__ == '__main__':
@@ -107,5 +127,7 @@ if __name__ == '__main__':
     app = t.check_app('weibo')
     t.capture_screen()
 
+    pos = t.compare_image('screen.png', '1.png')
+    t.swipe_screen(pos, pos)
 
 
