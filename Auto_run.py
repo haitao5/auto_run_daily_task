@@ -68,7 +68,7 @@ class Terminal():
         package = re.search(r"package:\S*%s"%app, packages)
 
         if not package:
-            logging.critical('APP 不匹配！')
+            logging.critical('未查到目标APP！')
             sys.exit()
 
         app = package.group(0)
@@ -76,10 +76,22 @@ class Terminal():
         return  app
 
 
-    def start_app(self, app):
-        packages = os.popen('adb shell am start %s'%app).read()
-        logging.debug('RUN: adb shell am start %s \n' %app + packages) 
+    def capture_screen(self):
+        """ 获取手机截屏，并保存到当前目录的screen.png
+        """
+        packages = os.popen('adb shell screencap -p /sdcard/screen.png').read()
+        logging.debug('RUN: adb shell screencap -p /sdcard/screen.png\n' + packages) 
+
+        packages = os.popen('adb pull /sdcard/screen.png .').read()
+        logging.debug('RUN: adb pull /sdcard/screen.png .\n' + packages) 
         pass
+
+    def compare_picture(self, image, template):
+        """" 查找并返回template图像在image图像的位置
+        """
+
+        pass
+
 
               
 
@@ -93,7 +105,7 @@ if __name__ == '__main__':
     t.get_screen_size()
 
     app = t.check_app('weibo')
-    t.start_app(app)
+    t.capture_screen()
 
 
 
