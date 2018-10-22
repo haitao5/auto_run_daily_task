@@ -1,0 +1,23 @@
+{
+    "step_num": 4,
+    "step1":{
+        "templ_icon": "1.png",
+        "delay_after_process": 10, 
+        "loop_count": 1
+    },
+    "step2":{
+        "templ_icon":"2.png",
+        "delay_after_process": 1, 
+        "loop_count": 1
+    },
+    "step3":{
+        "templ_icon": "3.png",
+        "delay_after_process": 10, 
+        "loop_count": 1
+    },
+    "step4":{
+        "templ_icon": "4.png",
+        "delay_after_process": 1, 
+        "loop_count": 5
+    }  
+}

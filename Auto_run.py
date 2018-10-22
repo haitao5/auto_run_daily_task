@@ -8,7 +8,8 @@ import re
 import time
 import logging
 import aircv
-
+import json
+import unittest
 
 def init_config():
     """ 初始配置
@@ -28,9 +29,6 @@ def cleanup():
 
 class Terminal():
     def __init__(self):
-        self.port_num = None
-        self.screen_height = 0
-        self.screen_width = 0
         pass
 
     def __run_adb_cmd__(self, cmd):
@@ -54,9 +52,7 @@ class Terminal():
 
         if not port_num:
             logging.critical('请安装 ADB 及驱动并配置环境变量')
-            sys.exit()
-
-        self.port_num = port_num
+            return None
         return port_num
 
     def get_screen_size(self):   
@@ -68,8 +64,6 @@ class Terminal():
         size = "{height}x{width}".format(height=m.group(2), width=m.group(1))
         logging.debug('屏幕尺寸: ' + size)
 
-        self.screen_height = int(m.group(2))
-        self.screen_width = int(m.group(1))
         return size
 
     def check_app(self, app):
@@ -126,39 +120,40 @@ class Terminal():
         pass
 
 
-def weibo_test():
-    t = Terminal()
-    t.connect_to_terminal()
-    t.get_screen_size()
+class TestDaiyTask(unittest.TestCase):
+    """
+    """
+    def setUp(self):
+        init_config()
+
+    def test_weibo(self):
+        task_name = 'weibo'
+
+        t = Terminal()
+        port = t.connect_to_terminal()
+        self.assertIsNotNone(port)
+
+        t.get_screen_size()
+
+        app = t.check_app(task_name)
+        self.assertIsNotNone(app)
+
+        with open(task_name + '.json', 'r') as f:
+            config = json.load(f)
+
+        for i in range(1, config["step_num"]+1):
+            current_step = config["step%d"%i] 
+
+            for loop in range(current_step["loop_count"]):
+                logging.debug('Current Step: %s,    Current Loop: %d\n' %(current_step, loop)) 
+       
+                t.capture_screen()
+                pos = t.compare_image('screen.png', current_step["templ_icon"])
+                t.swipe_screen(pos, pos)
+                time.sleep(current_step["delay_after_process"])
 
 
-
-    app = t.check_app('weibo')
-
-    t.capture_screen()
-    pos = t.compare_image('screen.png', '1.png')
-    t.swipe_screen(pos, pos)
-    time.sleep(10)
-
-    t.capture_screen()
-    pos = t.compare_image('screen.png', '2.png')
-    t.swipe_screen(pos, pos)
-    time.sleep(1)
-
-    t.capture_screen()
-    pos = t.compare_image('screen.png', '3.png')
-    t.swipe_screen(pos, pos)
-    time.sleep(10)
-
-    for i in range(6):
-        t.capture_screen()
-        pos = t.compare_image('screen.png', '4-l.png')
-        t.swipe_screen(pos, pos)   
-        time.sleep(2) 
-
-        
 if __name__ == '__main__':
-    init_config()
+    unittest.main()
 
-    weibo_test()
 
