@@ -161,9 +161,40 @@ class TestDaiyTask(unittest.TestCase):
                 
                 time.sleep(current_step["delay_after_process"])
 
+    def test_taobao(self):
+        task_name = 'taobao'
 
+        t = Terminal()
+        port = t.connect_to_terminal()
+        self.assertIsNotNone(port)
 
+        size = t.get_screen_size()
+        path =  '../Config/' + task_name + '/' + size + '/'
 
+        app = t.check_app(task_name)
+        self.assertIsNotNone(app)
+
+        with open(path+task_name + '.json', 'r') as f:
+            config = json.load(f)
+
+        for i in range(1, config["step_num"]+1):
+            current_step = config["step%d"%i] 
+
+            for loop in range(current_step["loop_count"]):
+                logging.debug('Current Step: %s,    Current Loop: %d\n' %(current_step, loop)) 
+       
+                t.capture_screen()
+                pos = t.compare_image('screen.png', path+current_step["templ_icon"])
+
+                if current_step["swip_find_need"] and not pos:
+                    t.swipe_screen((300,1000), (300,300), 1000)
+                    t.capture_screen()
+                    pos = t.compare_image('screen.png', path+current_step["templ_icon"])
+                
+                if pos:
+                    t.swipe_screen(pos, pos)
+                
+                time.sleep(current_step["delay_after_process"])
 
 if __name__ == '__main__':
     unittest.main()
