@@ -133,12 +133,13 @@ class TestDaiyTask(unittest.TestCase):
         port = t.connect_to_terminal()
         self.assertIsNotNone(port)
 
-        t.get_screen_size()
+        size = t.get_screen_size()
+        path =  '../Config/' + task_name + '/' + size + '/'
 
         app = t.check_app(task_name)
         self.assertIsNotNone(app)
 
-        with open(task_name + '.json', 'r') as f:
+        with open(path+task_name + '.json', 'r') as f:
             config = json.load(f)
 
         for i in range(1, config["step_num"]+1):
@@ -148,12 +149,24 @@ class TestDaiyTask(unittest.TestCase):
                 logging.debug('Current Step: %s,    Current Loop: %d\n' %(current_step, loop)) 
        
                 t.capture_screen()
-                pos = t.compare_image('screen.png', current_step["templ_icon"])
-                t.swipe_screen(pos, pos)
+                pos = t.compare_image('screen.png', path+current_step["templ_icon"])
+
+                if current_step["swip_find_need"] and not pos:
+                    t.swipe_screen((300,1000), (300,300), 1000)
+                    t.capture_screen()
+                    pos = t.compare_image('screen.png', path+current_step["templ_icon"])
+                
+                if pos:
+                    t.swipe_screen(pos, pos)
+                
                 time.sleep(current_step["delay_after_process"])
+
+
+
 
 
 if __name__ == '__main__':
     unittest.main()
+
 
 
