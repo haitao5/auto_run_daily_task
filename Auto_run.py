@@ -11,24 +11,24 @@ import aircv
 import json
 import unittest
 
-def init_config():
+def init_config(log2file):
     """ 初始配置
     
     """
     # 配置log输出格式
-    logging.basicConfig(level=logging.DEBUG, format=' %(asctime)s - %(levelname)s  -  %(message)s')
-    # 切换到ADB文件夹下执行之后命令
-    os.chdir(r".\adb")
+    if log2file:
+        logging.basicConfig(level=logging.DEBUG, format=' %(asctime)s - %(levelname)s  -  %(message)s', filename='logfile.log')
+    else:
+        logging.basicConfig(level=logging.DEBUG, format=' %(asctime)s - %(levelname)s  -  %(message)s')
     pass
 
-def cleanup():
-    """ 
-    """
-    # 删除截屏文件
+
+    
     pass
 
 class Terminal():
     def __init__(self):
+        self.adb_path = ".\\adb\\"
         pass
 
     def __run_adb_cmd__(self, cmd):
@@ -37,7 +37,7 @@ class Terminal():
         if not isinstance(cmd, str):
             raise TypeError
 
-        res = os.popen(cmd).read() 
+        res = os.popen(self.adb_path + cmd).read() 
         logging.debug('RUN: %s \n%s' %(cmd, res))
         return res
 
@@ -79,12 +79,14 @@ class Terminal():
         logging.debug('匹配包: ' + str(app))
         return  app
 
-
-    def capture_screen(self):
+    def capture_screen(self, dest_path):
         """ 获取手机截屏，并保存到当前目录的screen.png
         """
+        if not os.path.isdir(dest_path):
+            logging.critical('路径错误！')
+
         self.__run_adb_cmd__('adb shell screencap -p /sdcard/screen.png')
-        self.__run_adb_cmd__('adb pull /sdcard/screen.png .')
+        self.__run_adb_cmd__('adb pull /sdcard/screen.png ' + dest_path)
         pass
 
     def swipe_screen(self, src, dest, timeout=10):
@@ -93,109 +95,76 @@ class Terminal():
         cmd = "adb shell input swipe %d %d %d %d %d "  % (int(src[0]), int(src[1]), int(dest[0]), int(dest[1]), timeout)   
         return self.__run_adb_cmd__(cmd)  
 
-    def compare_image(self, src_img, obj_img):
-        """" 查找并返回 obj_img 图像在 src_img 图像的位置
-        """
-        im_src = aircv.imread(src_img)  
-        im_obj = aircv.imread(obj_img)
-
-        pos = aircv.find_template(im_src, im_obj)
-        logging.debug('Compare_Image: \nSource Image: %s \nObject Image:%s \nResults: %s\n' %(src_img, obj_img, pos)) 
-        
-        if pos:
-            return pos['result']
-        else:
-            return None
 
 
-    def find_obj(self, obj_img, timeout=5):
-        """  查找目标图标
-        """
-        start_time = time.time()
-        current_time = start_time
+def compare_image(src_img, obj_img):
+    """" 查找并返回 obj_img 图像在 src_img 图像的位置
+    """
+    im_src = aircv.imread(src_img)  
+    im_obj = aircv.imread(obj_img)
 
-        while current_time - start_time < timeout:
-            pass
+    pos = aircv.find_template(im_src, im_obj)
+    logging.debug('Compare_Image: \nSource Image: %s \nObject Image:%s \nResults: %s\n' %(src_img, obj_img, pos)) 
+    
+    if pos:
+        return pos['result']
+    else:
+        return None
 
-        pass
+def run_task(task_name):
+    """
+    """
+    t = Terminal()
+    port = t.connect_to_terminal()
+    if not port:
+        return None
+
+    size = t.get_screen_size()
+    app = t.check_app(task_name)
+    if not app:
+        return None
+
+    path = './Config/' + task_name + '/' + size
+    configfile = path + '/'+ task_name + '.json'
+    logging.info("配置文件：%s" % configfile)
+
+    with open(configfile, 'r') as f:
+        config = json.load(f)
+
+    for i in range(1, config["step_num"]+1):
+        current_step = config["step%d"%i] 
+
+        for loop in range(current_step["loop_count"]):
+            logging.debug('Current Step: %s,    Current Loop: %d\n' %(current_step, loop)) 
+    
+            t.capture_screen(path)
+            pos = compare_image(path+'\screen.png', path+'\\'+current_step["templ_icon"])
+            # 
+            if current_step["swip_find_need"] and not pos:
+                t.swipe_screen((300,1000), (300,300), 1000)
+                t.capture_screen(path)
+                pos = compare_image(path+'\screen.png', path+'\\'+current_step["templ_icon"])
+            if pos:
+                t.swipe_screen(pos, pos)
+            
+            time.sleep(current_step["delay_after_process"])   
+    os.remove(path+'\screen.png') 
+    pass
 
 
 class TestDaiyTask(unittest.TestCase):
     """
     """
     def setUp(self):
-        init_config()
+        init_config(1)
 
     def test_weibo(self):
-        task_name = 'weibo'
-
-        t = Terminal()
-        port = t.connect_to_terminal()
-        self.assertIsNotNone(port)
-
-        size = t.get_screen_size()
-        path =  '../Config/' + task_name + '/' + size + '/'
-
-        app = t.check_app(task_name)
-        self.assertIsNotNone(app)
-
-        with open(path+task_name + '.json', 'r') as f:
-            config = json.load(f)
-
-        for i in range(1, config["step_num"]+1):
-            current_step = config["step%d"%i] 
-
-            for loop in range(current_step["loop_count"]):
-                logging.debug('Current Step: %s,    Current Loop: %d\n' %(current_step, loop)) 
-       
-                t.capture_screen()
-                pos = t.compare_image('screen.png', path+current_step["templ_icon"])
-
-                if current_step["swip_find_need"] and not pos:
-                    t.swipe_screen((300,1000), (300,300), 1000)
-                    t.capture_screen()
-                    pos = t.compare_image('screen.png', path+current_step["templ_icon"])
-                
-                if pos:
-                    t.swipe_screen(pos, pos)
-                
-                time.sleep(current_step["delay_after_process"])
+        run_task("weibo")
 
     def test_taobao(self):
-        task_name = 'taobao'
-
-        t = Terminal()
-        port = t.connect_to_terminal()
-        self.assertIsNotNone(port)
-
-        size = t.get_screen_size()
-        path =  '../Config/' + task_name + '/' + size + '/'
-
-        app = t.check_app(task_name)
-        self.assertIsNotNone(app)
-
-        with open(path+task_name + '.json', 'r') as f:
-            config = json.load(f)
-
-        for i in range(1, config["step_num"]+1):
-            current_step = config["step%d"%i] 
-
-            for loop in range(current_step["loop_count"]):
-                logging.debug('Current Step: %s,    Current Loop: %d\n' %(current_step, loop)) 
-       
-                t.capture_screen()
-                pos = t.compare_image('screen.png', path+current_step["templ_icon"])
-
-                if current_step["swip_find_need"] and not pos:
-                    t.swipe_screen((300,1000), (300,300), 1000)
-                    t.capture_screen()
-                    pos = t.compare_image('screen.png', path+current_step["templ_icon"])
-                
-                if pos:
-                    t.swipe_screen(pos, pos)
-                
-                time.sleep(current_step["delay_after_process"])
-
+        #run_task("taobao")
+        pass
+        
 if __name__ == '__main__':
     unittest.main()
 
